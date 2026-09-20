@@ -57,7 +57,6 @@ function Watch() {
                   title={title ?? "Live stream"}
                   allowFullScreen
                   referrerPolicy="origin"
-                  sandbox="allow-scripts allow-same-origin allow-presentation"
                   className="h-full w-full"
                 />
               </div>
