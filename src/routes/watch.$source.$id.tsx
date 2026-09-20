@@ -1,14 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { listStreams } from "@/lib/streams.functions";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { listAllStreamsForEvent } from "@/lib/streams.functions";
 
 type WatchSearch = { title?: string | undefined };
+
+const HEALTH_TIMEOUT_MS = 12000;
 
 export const Route = createFileRoute("/watch/$source/$id")({
   validateSearch: (search: Record<string, unknown>): WatchSearch => ({
     title: typeof search['title'] === "string" ? (search['title'] as string) : undefined,
   }),
-  loader: ({ params }) => listStreams({ data: { source: params.source, id: params.id } }),
+  loader: ({ params }) =>
+    listAllStreamsForEvent({ data: { source: params.source, id: params.id } }),
   head: ({ match }) => {
     const title = match.search.title ?? "Live stream";
     return {
@@ -28,8 +31,51 @@ export const Route = createFileRoute("/watch/$source/$id")({
 function Watch() {
   const streams = Route.useLoaderData();
   const { title } = Route.useSearch();
+
   const [active, setActive] = useState(0);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [status, setStatus] = useState<"loading" | "ok" | "exhausted">("loading");
+  const [notice, setNotice] = useState<string | null>(null);
+  const triedRef = useRef<Set<number>>(new Set([0]));
   const current = streams[active];
+
+  // Auto-fix: if the player never reports a successful load, fail over to the
+  // next available mirror on its own.
+  const failover = useCallback(
+    (reason: string) => {
+      const next = streams.findIndex((_, i) => !triedRef.current.has(i));
+      if (next === -1) {
+        setStatus("exhausted");
+        setNotice("Every backup looked dead. Tap retry, or pick a stream below.");
+        return;
+      }
+      triedRef.current.add(next);
+      setActive(next);
+      setStatus("loading");
+      setNotice(`${reason} Switched to backup #${streams[next]!.streamNo}.`);
+    },
+    [streams],
+  );
+
+  useEffect(() => {
+    if (status !== "loading" || !current) return;
+    const t = setTimeout(() => failover("This stream didn't start."), HEALTH_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [status, current, reloadKey, failover]);
+
+  const retryAll = () => {
+    triedRef.current = new Set([active]);
+    setReloadKey((k) => k + 1);
+    setStatus("loading");
+    setNotice(null);
+  };
+
+  const pick = (i: number) => {
+    triedRef.current.add(i);
+    setActive(i);
+    setStatus("loading");
+    setNotice(null);
+  };
 
   return (
     <div className="min-h-screen">
@@ -38,8 +84,11 @@ function Watch() {
           <Link to="/" className="font-display text-3xl tracking-wider text-primary">
             LiveCast
           </Link>
-          <Link to="/" className="text-xs uppercase tracking-wide text-muted-foreground hover:text-foreground">
-            All streams
+          <Link
+            to="/"
+            className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition hover:border-primary hover:text-foreground"
+          >
+            ← Back to home
           </Link>
         </div>
       </header>
@@ -49,24 +98,44 @@ function Watch() {
 
         {current ? (
           <>
-            <div className="mt-4 overflow-hidden rounded-lg border border-border bg-black">
+            <div className="relative mt-4 overflow-hidden rounded-lg border border-border bg-black">
               <div className="aspect-video">
                 <iframe
-                  key={current.embedUrl}
+                  key={`${current.embedUrl}-${reloadKey}`}
                   src={current.embedUrl}
                   title={title ?? "Live stream"}
                   allowFullScreen
                   referrerPolicy="origin"
+                  onLoad={() => setStatus("ok")}
                   className="h-full w-full"
                 />
               </div>
+              {status === "loading" && (
+                <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-3">
+                  <span className="rounded-full bg-card/90 px-3 py-1 text-xs uppercase tracking-wide text-muted-foreground">
+                    Connecting to stream…
+                  </span>
+                </div>
+              )}
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
+            {notice && (
+              <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-accent/50 bg-accent/10 px-3 py-2 text-xs text-foreground">
+                <span>{notice}</span>
+                <button
+                  onClick={retryAll}
+                  className="rounded-sm border border-accent px-2 py-1 font-semibold uppercase tracking-wide text-accent"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            <div className="mt-4 flex flex-wrap items-center gap-2">
               {streams.map((s, i) => (
                 <button
-                  key={`${s.source}-${s.streamNo}`}
-                  onClick={() => setActive(i)}
+                  key={`${s.source}-${s.id}-${s.streamNo}`}
+                  onClick={() => pick(i)}
                   className={`rounded-md border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
                     i === active
                       ? "border-primary bg-primary text-primary-foreground"
@@ -76,16 +145,31 @@ function Watch() {
                   #{s.streamNo} {s.hd ? "HD" : "SD"} · {s.language}
                 </button>
               ))}
+              <button
+                onClick={() => failover("Thanks — flagged as broken.")}
+                className="rounded-md border border-live px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-live transition hover:bg-live hover:text-foreground"
+              >
+                Stream not working
+              </button>
             </div>
 
             <p className="mt-3 text-xs text-muted-foreground">
-              {current.viewers.toLocaleString()} watching · source: {current.source}
+              {current.viewers.toLocaleString()} watching · source: {current.source} ·{" "}
+              {streams.length} backup{streams.length === 1 ? "" : "s"} available
             </p>
           </>
         ) : (
-          <p className="mt-6 text-sm text-muted-foreground">
-            This stream is not available right now. Try another event.
-          </p>
+          <div className="mt-6">
+            <p className="text-sm text-muted-foreground">
+              This event has no working stream right now.
+            </p>
+            <Link
+              to="/"
+              className="mt-4 inline-flex rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+            >
+              Back to home
+            </Link>
+          </div>
         )}
 
         <div className="mt-8 rounded-lg border border-border bg-card p-4 text-xs leading-relaxed text-muted-foreground">
