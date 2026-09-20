@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { listStreams } from "@/lib/streams.functions";
 
-type WatchSearch = { title?: string };
+type WatchSearch = { title?: string | undefined };
 
 export const Route = createFileRoute("/watch/$source/$id")({
   validateSearch: (search: Record<string, unknown>): WatchSearch => ({
