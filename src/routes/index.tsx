@@ -43,6 +43,7 @@ function MatchCard({ match }: { match: Match }) {
       to="/watch/$source/$id"
       params={{ source: first.source, id: first.id }}
       search={{ title: match.title }}
+      preload="intent"
       className="group overflow-hidden rounded-lg border border-border bg-card transition hover:border-primary"
     >
       <div className="relative aspect-video overflow-hidden bg-secondary">
@@ -152,6 +153,11 @@ function Home() {
             . LiveCast hosts no video and claims no ownership of any broadcast. Rights remain with
             the original broadcasters and rights holders. Takedown requests should be directed to
             the source.
+          </p>
+          <p className="mt-3">
+            <Link to="/health" className="text-primary underline">
+              System health
+            </Link>
           </p>
         </div>
       </footer>
