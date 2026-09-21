@@ -154,6 +154,11 @@ function Home() {
             the original broadcasters and rights holders. Takedown requests should be directed to
             the source.
           </p>
+          <p className="mt-3">
+            <Link to="/health" className="text-primary underline">
+              System health
+            </Link>
+          </p>
         </div>
       </footer>
     </div>
