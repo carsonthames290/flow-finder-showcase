@@ -109,11 +109,26 @@ export const listAllStreamsForEvent = createServerFn({ method: "GET" })
     const match = matches.find((m) =>
       m.sources?.some((s) => s.source === data.source && s.id === data.id),
     );
-    const rest = (match?.sources ?? []).filter(
-      (s) =>
-        !(s.source === data.source && s.id === data.id) &&
-        (refCount.get(`${s.source}/${s.id}`) ?? 0) <= 1,
-    );
+    // Team-name tokens for this event, used to rank mirrors that clearly belong
+    // to this game ahead of opaque numeric mirrors that could point elsewhere.
+    const tokens = [match?.teams?.home?.name, match?.teams?.away?.name, match?.title]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length > 3 && !["live", "stream", "game"].includes(t));
+    const matchesEvent = (id: string) => {
+      const low = id.toLowerCase();
+      return tokens.some((t) => low.includes(t));
+    };
+
+    const rest = (match?.sources ?? [])
+      .filter(
+        (s) =>
+          !(s.source === data.source && s.id === data.id) &&
+          (refCount.get(`${s.source}/${s.id}`) ?? 0) <= 1,
+      )
+      .sort((a, b) => Number(matchesEvent(b.id)) - Number(matchesEvent(a.id)));
 
     const results = await Promise.all(rest.map((s) => getStreams(s.source, s.id)));
     const all = [...primary, ...results.flat()].filter((s) => Boolean(s?.embedUrl));
