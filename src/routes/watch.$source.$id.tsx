@@ -4,7 +4,7 @@ import { listAllStreamsForEvent } from "@/lib/streams.functions";
 
 type WatchSearch = { title?: string | undefined };
 
-const HEALTH_TIMEOUT_MS = 12000;
+const HEALTH_TIMEOUT_MS = 9000;
 
 export const Route = createFileRoute("/watch/$source/$id")({
   validateSearch: (search: Record<string, unknown>): WatchSearch => ({
@@ -105,7 +105,9 @@ function Watch() {
                   src={current.embedUrl}
                   title={title ?? "Live stream"}
                   allowFullScreen
-                  referrerPolicy="origin"
+                  allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                  referrerPolicy="no-referrer"
+                  loading="eager"
                   onLoad={() => setStatus("ok")}
                   className="h-full w-full"
                 />
