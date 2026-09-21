@@ -133,7 +133,12 @@ export const listAllStreamsForEvent = createServerFn({ method: "GET" })
     const results = await Promise.all(rest.map((s) => getStreams(s.source, s.id)));
     const all = [...primary, ...results.flat()].filter((s) => Boolean(s?.embedUrl));
     const seen = new Set<string>();
-    return all.filter((s) => (seen.has(s.embedUrl) ? false : (seen.add(s.embedUrl), true)));
+    const streams = all.filter((s) =>
+      seen.has(s.embedUrl) ? false : (seen.add(s.embedUrl), true),
+    );
+    // The event title is resolved server-side from the stream reference itself,
+    // so the page can never show one game's name over another game's player.
+    return { title: match?.title ?? null, category: match?.category ?? null, streams };
   });
 
 export type HealthReport = {
