@@ -120,9 +120,6 @@ function Watch() {
                   title={title}
                   allowFullScreen
                   allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                  // No allow-popups: the stream host's first click otherwise
-                  // opens an ad tab before the video will start.
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
                   referrerPolicy="no-referrer"
                   loading="eager"
                   onLoad={() => setStatus("ok")}
