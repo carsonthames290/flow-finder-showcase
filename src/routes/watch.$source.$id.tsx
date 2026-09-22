@@ -8,7 +8,7 @@ const HEALTH_TIMEOUT_MS = 9000;
 
 export const Route = createFileRoute("/watch/$source/$id")({
   validateSearch: (search: Record<string, unknown>): WatchSearch => ({
-    title: typeof search['title'] === "string" ? (search['title'] as string) : undefined,
+    title: typeof search["title"] === "string" ? (search["title"] as string) : undefined,
   }),
   loader: ({ params }) =>
     listAllStreamsForEvent({ data: { source: params.source, id: params.id } }),
@@ -29,14 +29,18 @@ export const Route = createFileRoute("/watch/$source/$id")({
 });
 
 function Watch() {
-  const streams = Route.useLoaderData();
-  const { title } = Route.useSearch();
+  const { streams, title: serverTitle } = Route.useLoaderData();
+  const { title: searchTitle } = Route.useSearch();
+  // The server-resolved title always wins: it comes from the same event the
+  // player is pointed at, so the name can never belong to a different game.
+  const title = serverTitle ?? searchTitle ?? "Live stream";
 
   const [active, setActive] = useState(0);
   const [reloadKey, setReloadKey] = useState(0);
   const [status, setStatus] = useState<"loading" | "ok" | "exhausted">("loading");
   const [notice, setNotice] = useState<string | null>(null);
   const triedRef = useRef<Set<number>>(new Set([0]));
+  const frameWrapRef = useRef<HTMLDivElement>(null);
   const current = streams[active];
 
   // Auto-fix: if the player never reports a successful load, fail over to the
@@ -77,6 +81,13 @@ function Watch() {
     setNotice(null);
   };
 
+  const goFullscreen = () => {
+    const el = frameWrapRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void el.requestFullscreen?.();
+  };
+
   return (
     <div className="min-h-screen">
       <header className="border-b border-border">
@@ -94,18 +105,24 @@ function Watch() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6">
-        <h1 className="text-3xl sm:text-4xl">{title ?? "Live stream"}</h1>
+        <h1 className="text-3xl sm:text-4xl">{title}</h1>
 
         {current ? (
           <>
-            <div className="relative mt-4 overflow-hidden rounded-lg border border-border bg-black">
+            <div
+              ref={frameWrapRef}
+              className="relative mt-4 overflow-hidden rounded-lg border border-border bg-black"
+            >
               <div className="aspect-video">
                 <iframe
                   key={`${current.embedUrl}-${reloadKey}`}
                   src={current.embedUrl}
-                  title={title ?? "Live stream"}
+                  title={title}
                   allowFullScreen
                   allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                  // No allow-popups: the stream host's first click otherwise
+                  // opens an ad tab before the video will start.
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
                   referrerPolicy="no-referrer"
                   loading="eager"
                   onLoad={() => setStatus("ok")}
@@ -119,6 +136,12 @@ function Watch() {
                   </span>
                 </div>
               )}
+              <button
+                onClick={goFullscreen}
+                className="absolute bottom-3 right-3 rounded-md border border-border bg-card/90 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground transition hover:border-primary"
+              >
+                ⛶ Fullscreen
+              </button>
             </div>
 
             {notice && (
