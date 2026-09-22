@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { listLiveMatches, posterUrl, badgeUrl, type Match } from "@/lib/streams.functions";
+import { listSchedule, posterUrl, badgeUrl, type Match } from "@/lib/streams.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -9,18 +9,18 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Watch live football, basketball, hockey, fight nights and more. Every stream credited to its original source.",
+          "Watch live football, basketball, hockey, fight nights and more, plus what's coming up next. Every stream credited to its original source.",
       },
       { property: "og:title", content: "LiveCast — Free Live Sports Streams" },
       {
         property: "og:description",
-        content: "Live sports streams from around the world, updated automatically.",
+        content: "Live and upcoming sports streams from around the world, updated automatically.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: () => listLiveMatches(),
+  loader: () => listSchedule(),
   component: Home,
 });
 
@@ -32,7 +32,7 @@ function timeLabel(ms: number) {
   });
 }
 
-function MatchCard({ match }: { match: Match }) {
+function MatchCard({ match, live }: { match: Match; live: boolean }) {
   const first = match.sources[0]!;
   const poster = posterUrl(match.poster);
   const home = badgeUrl(match.teams?.home?.badge);
@@ -60,10 +60,16 @@ function MatchCard({ match }: { match: Match }) {
             {away && <img src={away} alt="" className="h-12 w-12 object-contain" />}
           </div>
         )}
-        <span className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-sm bg-live px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-foreground">
-          <span className="live-dot h-1.5 w-1.5 rounded-full bg-foreground" />
-          Live
-        </span>
+        {live ? (
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-sm bg-live px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-foreground">
+            <span className="live-dot h-1.5 w-1.5 rounded-full bg-foreground" />
+            Live
+          </span>
+        ) : (
+          <span className="absolute left-2 top-2 rounded-sm bg-card/90 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {timeLabel(match.date)}
+          </span>
+        )}
       </div>
       <div className="p-3">
         <h3 className="text-lg leading-tight">{match.title}</h3>
@@ -77,17 +83,17 @@ function MatchCard({ match }: { match: Match }) {
 }
 
 function Home() {
-  const matches = Route.useLoaderData();
+  const { live, upcoming } = Route.useLoaderData();
   const [category, setCategory] = useState<string>("all");
 
   const categories = useMemo(
-    () => ["all", ...Array.from(new Set(matches.map((m) => m.category))).sort()],
-    [matches],
+    () => ["all", ...Array.from(new Set([...live, ...upcoming].map((m) => m.category))).sort()],
+    [live, upcoming],
   );
-  const shown = useMemo(
-    () => (category === "all" ? matches : matches.filter((m) => m.category === category)),
-    [matches, category],
-  );
+  const filter = (list: Match[]) =>
+    category === "all" ? list : list.filter((m) => m.category === category);
+  const shownLive = filter(live);
+  const shownUpcoming = filter(upcoming);
 
   return (
     <div className="min-h-screen">
@@ -98,7 +104,7 @@ function Home() {
           </Link>
           <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
             <span className="live-dot h-2 w-2 rounded-full bg-live" />
-            {matches.length} live now
+            {live.length} live now
           </span>
         </div>
       </header>
@@ -125,16 +131,28 @@ function Home() {
           ))}
         </div>
 
-        {shown.length === 0 ? (
-          <p className="mt-10 text-sm text-muted-foreground">
-            Nothing live in this category right now. Check back soon.
+        <h2 className="mt-8 text-2xl">Live now</h2>
+        {shownLive.length === 0 ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Nothing live in this category right now. Check the upcoming list below.
           </p>
         ) : (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {shown.map((m) => (
-              <MatchCard key={m.id} match={m} />
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {shownLive.map((m) => (
+              <MatchCard key={m.id} match={m} live />
             ))}
           </div>
+        )}
+
+        {shownUpcoming.length > 0 && (
+          <>
+            <h2 className="mt-12 text-2xl">Upcoming</h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {shownUpcoming.map((m) => (
+                <MatchCard key={m.id} match={m} live={false} />
+              ))}
+            </div>
+          </>
         )}
       </section>
 
