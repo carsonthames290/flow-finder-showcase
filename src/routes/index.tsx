@@ -66,14 +66,20 @@ function MatchCard({ match, live }: { match: Match; live: boolean }) {
             Live
           </span>
         ) : (
-          <span className="absolute left-2 top-2 rounded-sm bg-card/90 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <span
+            suppressHydrationWarning
+            className="absolute left-2 top-2 rounded-sm bg-card/90 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+          >
             {timeLabel(match.date)}
           </span>
         )}
       </div>
       <div className="p-3">
         <h3 className="text-lg leading-tight">{match.title}</h3>
-        <p className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
+        <p
+          suppressHydrationWarning
+          className="mt-1 text-xs uppercase tracking-wide text-muted-foreground"
+        >
           {match.category} · {timeLabel(match.date)} · {match.sources.length} source
           {match.sources.length > 1 ? "s" : ""}
         </p>
@@ -83,7 +89,10 @@ function MatchCard({ match, live }: { match: Match; live: boolean }) {
 }
 
 function Home() {
-  const { live, upcoming } = Route.useLoaderData();
+  const data = Route.useLoaderData();
+  // Tolerate an older cached payload (a plain array) from a previous session.
+  const live = Array.isArray(data) ? (data as Match[]) : (data?.live ?? []);
+  const upcoming = Array.isArray(data) ? [] : (data?.upcoming ?? []);
   const [category, setCategory] = useState<string>("all");
 
   const categories = useMemo(
