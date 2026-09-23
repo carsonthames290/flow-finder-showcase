@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { Check, MonitorUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { listSchedule, posterUrl, badgeUrl, type Match } from "@/lib/streams.functions";
 
 export const Route = createFileRoute("/")({
@@ -32,21 +34,32 @@ function timeLabel(ms: number) {
   });
 }
 
-function MatchCard({ match, live }: { match: Match; live: boolean }) {
-  const first = match.sources[0]!;
+function MatchCard({
+  match,
+  live,
+  selected,
+  onToggle,
+}: {
+  match: Match;
+  live: boolean;
+  selected?: boolean;
+  onToggle?: () => void;
+}) {
+  const first = match.sources[0];
   const poster = posterUrl(match.poster);
   const home = badgeUrl(match.teams?.home?.badge);
   const away = badgeUrl(match.teams?.away?.badge);
 
   return (
-    <Link
-      to="/watch/$source/$id"
-      params={{ source: first.source, id: first.id }}
-      search={{ title: match.title }}
-      preload="intent"
-      className="group overflow-hidden rounded-lg border border-border bg-card transition hover:border-primary"
-    >
-      <div className="relative aspect-video overflow-hidden bg-secondary">
+    <article className="group overflow-hidden rounded-lg border border-border bg-card transition hover:border-primary">
+      {first ? <Link
+        to="/watch/$source/$id"
+        params={{ source: first.source, id: first.id }}
+        search={{ title: match.title }}
+        preload="intent"
+        className="block"
+      >
+        <div className="relative aspect-video overflow-hidden bg-secondary">
         {poster ? (
           <img
             src={poster}
@@ -73,18 +86,33 @@ function MatchCard({ match, live }: { match: Match; live: boolean }) {
             {timeLabel(match.date)}
           </span>
         )}
-      </div>
-      <div className="p-3">
-        <h3 className="text-lg leading-tight">{match.title}</h3>
-        <p
-          suppressHydrationWarning
-          className="mt-1 text-xs uppercase tracking-wide text-muted-foreground"
-        >
-          {match.category} · {timeLabel(match.date)} · {match.sources.length} source
-          {match.sources.length > 1 ? "s" : ""}
-        </p>
-      </div>
-    </Link>
+        </div>
+        <div className="p-3 pb-2">
+          <h3 className="text-lg leading-tight">{match.title}</h3>
+          <p
+            suppressHydrationWarning
+            className="mt-1 text-xs uppercase tracking-wide text-muted-foreground"
+          >
+            {match.category} · {timeLabel(match.date)} · {match.sources.length} source
+            {match.sources.length > 1 ? "s" : ""}
+          </p>
+        </div>
+      </Link> : null}
+      {live && onToggle && (
+        <div className="px-3 pb-3">
+          <Button
+            type="button"
+            variant={selected ? "default" : "outline"}
+            size="sm"
+            onClick={onToggle}
+            className="w-full"
+          >
+            {selected ? <Check /> : <MonitorUp />}
+            {selected ? "Added to Multiview" : "Add to Multiview"}
+          </Button>
+        </div>
+      )}
+    </article>
   );
 }
 
@@ -94,6 +122,7 @@ function Home() {
   const live = Array.isArray(data) ? (data as Match[]) : (data?.live ?? []);
   const upcoming = Array.isArray(data) ? [] : (data?.upcoming ?? []);
   const [category, setCategory] = useState<string>("all");
+  const [selected, setSelected] = useState<string[]>([]);
 
   const categories = useMemo(
     () => ["all", ...Array.from(new Set([...live, ...upcoming].map((m) => m.category))).sort()],
@@ -103,6 +132,18 @@ function Home() {
     category === "all" ? list : list.filter((m) => m.category === category);
   const shownLive = filter(live);
   const shownUpcoming = filter(upcoming);
+  const toggleMultiview = (match: Match) => {
+    const source = match.sources[0];
+    if (!source) return;
+    const ref = `${source.source}:${source.id}`;
+    setSelected((current) =>
+      current.includes(ref)
+        ? current.filter((item) => item !== ref)
+        : current.length < 4
+          ? [...current, ref]
+          : current,
+    );
+  };
 
   return (
     <div className="min-h-screen">
@@ -111,10 +152,19 @@ function Home() {
           <Link to="/" className="font-display text-3xl tracking-wider text-primary">
             LiveCast
           </Link>
-          <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground">
-            <span className="live-dot h-2 w-2 rounded-full bg-live" />
-            {live.length} live now
-          </span>
+          <div className="flex items-center gap-3">
+            {selected.length > 0 && (
+              <Button asChild size="sm">
+                <Link to="/watch/multiview" search={{ streams: selected.join(",") }}>
+                  <MonitorUp /> Multiview {selected.length}/4
+                </Link>
+              </Button>
+            )}
+            <span className="hidden items-center gap-1.5 text-xs uppercase tracking-wide text-muted-foreground sm:inline-flex">
+              <span className="live-dot h-2 w-2 rounded-full bg-live" />
+              {live.length} live now
+            </span>
+          </div>
         </div>
       </header>
 
@@ -148,7 +198,13 @@ function Home() {
         ) : (
           <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {shownLive.map((m) => (
-              <MatchCard key={m.id} match={m} live />
+              <MatchCard
+                key={m.id}
+                match={m}
+                live
+                selected={m.sources[0] ? selected.includes(`${m.sources[0].source}:${m.sources[0].id}`) : false}
+                onToggle={() => toggleMultiview(m)}
+              />
             ))}
           </div>
         )}
