@@ -194,7 +194,8 @@ export async function runHealthCheck(): Promise<HealthReport> {
   const sample = matches.filter((m) => m.sources?.length && isLive(m.date)).slice(0, 5);
   let playable = 0;
   for (const m of sample) {
-    const first = m.sources[0]!;
+    const first = m.sources[0];
+    if (!first) continue;
     const streams = await getStreams(first.source, first.id);
     if (streams.some((s) => s.embedUrl)) playable++;
   }
