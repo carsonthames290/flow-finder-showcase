@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { StreamEmbed } from "@/components/stream-embed";
+import { Button } from "@/components/ui/button";
 import { listAllStreamsForEvent } from "@/lib/streams.functions";
 
 type WatchSearch = { title?: string | undefined };
@@ -40,7 +42,6 @@ function Watch() {
   const [status, setStatus] = useState<"loading" | "ok" | "exhausted">("loading");
   const [notice, setNotice] = useState<string | null>(null);
   const triedRef = useRef<Set<number>>(new Set([0]));
-  const frameWrapRef = useRef<HTMLDivElement>(null);
   const current = streams[active];
 
   // Auto-fix: if the player never reports a successful load, fail over to the
@@ -56,7 +57,10 @@ function Watch() {
       triedRef.current.add(next);
       setActive(next);
       setStatus("loading");
-      setNotice(`${reason} Switched to backup #${streams[next]!.streamNo}.`);
+      const nextStream = streams[next];
+      setNotice(
+        nextStream ? `${reason} Switched to backup #${nextStream.streamNo}.` : reason,
+      );
     },
     [streams],
   );
@@ -81,13 +85,6 @@ function Watch() {
     setNotice(null);
   };
 
-  const goFullscreen = () => {
-    const el = frameWrapRef.current;
-    if (!el) return;
-    if (document.fullscreenElement) void document.exitFullscreen();
-    else void el.requestFullscreen?.();
-  };
-
   return (
     <div className="min-h-screen">
       <header className="border-b border-border">
@@ -109,36 +106,14 @@ function Watch() {
 
         {current ? (
           <>
-            <div
-              ref={frameWrapRef}
-              className="relative mt-4 overflow-hidden rounded-lg border border-border bg-black"
-            >
-              <div className="aspect-video">
-                <iframe
-                  key={`${current.embedUrl}-${reloadKey}`}
-                  src={current.embedUrl}
-                  title={title}
-                  allowFullScreen
-                  allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                  referrerPolicy="no-referrer"
-                  loading="eager"
-                  onLoad={() => setStatus("ok")}
-                  className="h-full w-full"
-                />
-              </div>
-              {status === "loading" && (
-                <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-3">
-                  <span className="rounded-full bg-card/90 px-3 py-1 text-xs uppercase tracking-wide text-muted-foreground">
-                    Connecting to stream…
-                  </span>
-                </div>
-              )}
-              <button
-                onClick={goFullscreen}
-                className="absolute bottom-3 right-3 rounded-md border border-border bg-card/90 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground transition hover:border-primary"
-              >
-                ⛶ Fullscreen
-              </button>
+            <div className="mt-4">
+              <StreamEmbed
+                src={current.embedUrl}
+                title={title}
+                reloadKey={reloadKey}
+                loading={status === "loading"}
+                onLoad={() => setStatus("ok")}
+              />
             </div>
 
             {notice && (
@@ -155,24 +130,23 @@ function Watch() {
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
               {streams.map((s, i) => (
-                <button
+                <Button
                   key={`${s.source}-${s.id}-${s.streamNo}`}
                   onClick={() => pick(i)}
-                  className={`rounded-md border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
-                    i === active
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border text-muted-foreground hover:border-primary hover:text-foreground"
-                  }`}
+                  variant={i === active ? "default" : "outline"}
+                  size="sm"
                 >
                   #{s.streamNo} {s.hd ? "HD" : "SD"} · {s.language}
-                </button>
+                </Button>
               ))}
-              <button
+              <Button
                 onClick={() => failover("Thanks — flagged as broken.")}
-                className="rounded-md border border-live px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-live transition hover:bg-live hover:text-foreground"
+                variant="outline"
+                size="sm"
+                className="border-live text-live hover:bg-live hover:text-foreground"
               >
                 Stream not working
-              </button>
+              </Button>
             </div>
 
             <p className="mt-3 text-xs text-muted-foreground">
