@@ -119,12 +119,14 @@ function Watch() {
             {notice && (
               <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-accent/50 bg-accent/10 px-3 py-2 text-xs text-foreground">
                 <span>{notice}</span>
-                <button
+                <Button
                   onClick={retryAll}
-                  className="rounded-sm border border-accent px-2 py-1 font-semibold uppercase tracking-wide text-accent"
+                  variant="outline"
+                  size="sm"
+                  className="border-accent text-accent"
                 >
                   Retry
-                </button>
+                </Button>
               </div>
             )}
 

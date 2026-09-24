@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StreamEmbed } from "@/components/stream-embed";
 import { Button } from "@/components/ui/button";
 import { listAllStreamsForEvent } from "@/lib/streams.functions";
@@ -40,9 +40,26 @@ export const Route = createFileRoute("/watch/multiview")({
   component: Multiview,
 });
 
-function MultiviewTile({ event }: { event: Awaited<ReturnType<typeof listAllStreamsForEvent>> }) {
+function MultiviewTile({
+  event,
+  index,
+  audioActive,
+  onActivateAudio,
+}: {
+  event: Awaited<ReturnType<typeof listAllStreamsForEvent>>;
+  index: number;
+  audioActive: boolean;
+  onActivateAudio: () => void;
+}) {
   const [active, setActive] = useState(0);
+  const [ready, setReady] = useState(index === 0);
   const current = event.streams[active];
+
+  useEffect(() => {
+    if (ready) return;
+    const timer = window.setTimeout(() => setReady(true), index * 700);
+    return () => window.clearTimeout(timer);
+  }, [index, ready]);
 
   return (
     <section className="min-w-0">
@@ -65,8 +82,20 @@ function MultiviewTile({ event }: { event: Awaited<ReturnType<typeof listAllStre
           </select>
         )}
       </div>
-      {current ? (
-        <StreamEmbed src={current.embedUrl} title={event.title ?? "Live stream"} compact />
+      {current && ready ? (
+        <StreamEmbed
+          key={`${current.embedUrl}-${audioActive}`}
+          src={current.embedUrl}
+          title={event.title ?? "Live stream"}
+          compact
+          activeAudio={audioActive}
+          onActivateAudio={onActivateAudio}
+          lazy={index > 0}
+        />
+      ) : current ? (
+        <div className="flex aspect-video items-center justify-center rounded-lg border border-border bg-card px-4 text-center text-sm text-muted-foreground">
+          Preparing stream…
+        </div>
       ) : (
         <div className="flex aspect-video items-center justify-center rounded-lg border border-border bg-card px-4 text-center text-sm text-muted-foreground">
           No stream is available for this event.
@@ -78,6 +107,7 @@ function MultiviewTile({ event }: { event: Awaited<ReturnType<typeof listAllStre
 
 function Multiview() {
   const { events } = Route.useLoaderData();
+  const [audioIndex, setAudioIndex] = useState(0);
 
   return (
     <div className="min-h-screen">
@@ -101,7 +131,13 @@ function Multiview() {
         {events.length ? (
           <div className={`grid gap-4 ${events.length > 1 ? "lg:grid-cols-2" : ""}`}>
             {events.map((event, index) => (
-              <MultiviewTile key={`${event.title ?? "stream"}-${index}`} event={event} />
+              <MultiviewTile
+                key={`${event.title ?? "stream"}-${index}`}
+                event={event}
+                index={index}
+                audioActive={audioIndex === index}
+                onActivateAudio={() => setAudioIndex(index)}
+              />
             ))}
           </div>
         ) : (

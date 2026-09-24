@@ -9,6 +9,9 @@ type StreamEmbedProps = {
   loading?: boolean;
   reloadKey?: number;
   compact?: boolean;
+  activeAudio?: boolean;
+  onActivateAudio?: () => void;
+  lazy?: boolean;
 };
 
 export function StreamEmbed({
@@ -18,6 +21,9 @@ export function StreamEmbed({
   loading = false,
   reloadKey = 0,
   compact = false,
+  activeAudio = true,
+  onActivateAudio,
+  lazy = false,
 }: StreamEmbedProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -31,7 +37,9 @@ export function StreamEmbed({
   return (
     <div
       ref={wrapRef}
-      className="relative overflow-hidden rounded-lg border border-border bg-secondary"
+      className={`relative overflow-hidden rounded-lg border bg-secondary transition ${
+        activeAudio ? "border-primary" : "border-border"
+      }`}
     >
       <div className="aspect-video">
         <iframe
@@ -39,13 +47,25 @@ export function StreamEmbed({
           src={src}
           title={title}
           allowFullScreen
-          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-          referrerPolicy="no-referrer"
-          loading="eager"
+          allow={`${activeAudio ? "autoplay; " : ""}fullscreen; encrypted-media; picture-in-picture`}
+          referrerPolicy="origin"
+          loading={lazy ? "lazy" : "eager"}
           onLoad={onLoad}
           className="h-full w-full"
         />
       </div>
+      {onActivateAudio && !activeAudio && (
+        <button
+          type="button"
+          onClick={onActivateAudio}
+          className="absolute inset-0 z-10 flex items-end justify-start bg-transparent p-3 text-left"
+          aria-label={`Use audio from ${title}`}
+        >
+          <span className="rounded-md border border-border bg-card/90 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground">
+            Click for audio
+          </span>
+        </button>
+      )}
       {loading && (
         <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-3">
           <span className="rounded-full bg-card/90 px-3 py-1 text-xs uppercase tracking-wide text-muted-foreground">
@@ -60,7 +80,7 @@ export function StreamEmbed({
         onClick={toggleFullscreen}
         title="Fullscreen"
         aria-label={`Open ${title} fullscreen`}
-        className="absolute bottom-3 right-3 bg-card/90"
+        className="absolute right-3 top-3 z-20 bg-card/90"
       >
         <Maximize2 />
         {!compact && <span>Fullscreen</span>}
