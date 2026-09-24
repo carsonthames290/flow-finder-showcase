@@ -84,7 +84,7 @@ function MultiviewTile({
       </div>
       {current && ready ? (
         <StreamEmbed
-          key={`${current.embedUrl}-${audioActive}`}
+          key={current.embedUrl}
           src={current.embedUrl}
           title={event.title ?? "Live stream"}
           compact

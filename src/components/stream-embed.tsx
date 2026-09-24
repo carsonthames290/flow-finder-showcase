@@ -47,24 +47,23 @@ export function StreamEmbed({
           src={src}
           title={title}
           allowFullScreen
-          allow={`${activeAudio ? "autoplay *; " : ""}fullscreen *; encrypted-media *; picture-in-picture *`}
+          allow="autoplay *; fullscreen *; encrypted-media *; picture-in-picture *"
           referrerPolicy="origin"
           loading={lazy ? "lazy" : "eager"}
           onLoad={onLoad}
           className="h-full w-full"
         />
       </div>
-      {onActivateAudio && !activeAudio && (
+      {onActivateAudio && (
         <Button
           type="button"
-          variant="ghost"
+          variant={activeAudio ? "default" : "outline"}
+          size="sm"
           onClick={onActivateAudio}
-          className="absolute inset-0 z-10 h-full w-full items-end justify-start rounded-none bg-transparent p-3 text-left hover:bg-transparent"
+          className={`absolute left-3 top-3 z-20 ${activeAudio ? "" : "bg-card/90"}`}
           aria-label={`Use audio from ${title}`}
         >
-          <span className="rounded-md border border-border bg-card/90 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground">
-            Click for audio
-          </span>
+          {activeAudio ? "Audio on" : "Use audio"}
         </Button>
       )}
       {loading && (
