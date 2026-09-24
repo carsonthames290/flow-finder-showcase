@@ -47,7 +47,7 @@ export function StreamEmbed({
           src={src}
           title={title}
           allowFullScreen
-          allow={`${activeAudio ? "autoplay; " : ""}fullscreen; encrypted-media; picture-in-picture`}
+          allow={`${activeAudio ? "autoplay *; " : ""}fullscreen *; encrypted-media *; picture-in-picture *`}
           referrerPolicy="origin"
           loading={lazy ? "lazy" : "eager"}
           onLoad={onLoad}

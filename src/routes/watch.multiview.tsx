@@ -62,7 +62,7 @@ function MultiviewTile({
   }, [index, ready]);
 
   return (
-    <section className="min-w-0">
+    <section className="min-w-0 [contain-intrinsic-size:360px] [content-visibility:auto]">
       <div className="mb-2 flex min-h-8 items-center justify-between gap-3">
         <h2 className="truncate text-xl" title={event.title ?? "Live stream"}>
           {event.title ?? "Live stream"}
