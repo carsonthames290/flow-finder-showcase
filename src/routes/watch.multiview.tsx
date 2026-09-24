@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { StreamEmbed } from "@/components/stream-embed";
 import { Button } from "@/components/ui/button";
 import { listAllStreamsForEvent } from "@/lib/streams.functions";
@@ -27,6 +27,9 @@ export const Route = createFileRoute("/watch/multiview")({
     );
     return { events };
   },
+  staleTime: Infinity,
+  gcTime: Infinity,
+  shouldReload: false,
   head: () => ({
     meta: [
       { title: "Multiview — LiveCast" },
@@ -40,7 +43,7 @@ export const Route = createFileRoute("/watch/multiview")({
   component: Multiview,
 });
 
-function MultiviewTile({
+const MultiviewTile = memo(function MultiviewTile({
   event,
   index,
   audioActive,
@@ -49,7 +52,7 @@ function MultiviewTile({
   event: Awaited<ReturnType<typeof listAllStreamsForEvent>>;
   index: number;
   audioActive: boolean;
-  onActivateAudio: () => void;
+  onActivateAudio: (index: number) => void;
 }) {
   const [active, setActive] = useState(0);
   const [ready, setReady] = useState(index === 0);
@@ -57,12 +60,12 @@ function MultiviewTile({
 
   useEffect(() => {
     if (ready) return;
-    const timer = window.setTimeout(() => setReady(true), index * 700);
+    const timer = window.setTimeout(() => setReady(true), index * 400);
     return () => window.clearTimeout(timer);
   }, [index, ready]);
 
   return (
-    <section className="min-w-0 [contain-intrinsic-size:360px] [content-visibility:auto]">
+    <section className="min-w-0">
       <div className="mb-2 flex min-h-8 items-center justify-between gap-3">
         <h2 className="truncate text-xl" title={event.title ?? "Live stream"}>
           {event.title ?? "Live stream"}
@@ -89,8 +92,8 @@ function MultiviewTile({
           title={event.title ?? "Live stream"}
           compact
           activeAudio={audioActive}
-          onActivateAudio={onActivateAudio}
-          lazy={index > 0}
+          onActivateAudio={() => onActivateAudio(index)}
+          lazy={false}
         />
       ) : current ? (
         <div className="flex aspect-video items-center justify-center rounded-lg border border-border bg-card px-4 text-center text-sm text-muted-foreground">
@@ -103,7 +106,7 @@ function MultiviewTile({
       )}
     </section>
   );
-}
+});
 
 function Multiview() {
   const { events } = Route.useLoaderData();
@@ -136,7 +139,7 @@ function Multiview() {
                 event={event}
                 index={index}
                 audioActive={audioIndex === index}
-                onActivateAudio={() => setAudioIndex(index)}
+                onActivateAudio={setAudioIndex}
               />
             ))}
           </div>
