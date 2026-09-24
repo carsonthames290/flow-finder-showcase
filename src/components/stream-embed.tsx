@@ -55,16 +55,17 @@ export function StreamEmbed({
         />
       </div>
       {onActivateAudio && !activeAudio && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={onActivateAudio}
-          className="absolute inset-0 z-10 flex items-end justify-start bg-transparent p-3 text-left"
+          className="absolute inset-0 z-10 h-full w-full items-end justify-start rounded-none bg-transparent p-3 text-left hover:bg-transparent"
           aria-label={`Use audio from ${title}`}
         >
           <span className="rounded-md border border-border bg-card/90 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-foreground">
             Click for audio
           </span>
-        </button>
+        </Button>
       )}
       {loading && (
         <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center p-3">
