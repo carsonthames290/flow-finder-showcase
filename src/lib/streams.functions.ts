@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
-const BASE = "https://streamed.pk";
+const BASE = "https://strmfree.st";
 
 export type Source = { source: string; id: string };
 export type Match = {
@@ -11,8 +11,8 @@ export type Match = {
   poster?: string | null;
   popular?: boolean;
   teams?: {
-    home?: { name: string; badge?: string } | null;
-    away?: { name: string; badge?: string } | null;
+    home?: { name: string; badge?: string | undefined } | null;
+    away?: { name: string; badge?: string | undefined } | null;
   } | null;
   sources: Source[];
 };
@@ -39,22 +39,46 @@ async function get<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-// Short-lived in-memory cache so repeated page loads don't re-hit the upstream
-// listing endpoint (the slowest call in the chain).
-const MATCHES_TTL_MS = 45_000;
-let matchesCache: { at: number; data: Match[] } | undefined;
+type RawStream = {
+  name: string;
+  category: string;
+  stream_key: string;
+  match_timestamp?: number | null;
+  viewers?: number;
+  thumbnail_url?: string | null;
+  sources?: string[];
+  live_sources?: string[];
+  team1?: { name: string; logo?: string } | null;
+  team2?: { name: string; logo?: string } | null;
+};
 
-/**
- * Full schedule (today's events, live and upcoming). The upstream "/live"
- * endpoint under-reports: long-running events such as tennis sessions and 24/7
- * channels drop off it, so the whole schedule is used and liveness is decided
- * from the start time instead.
- */
-async function getAllMatches(): Promise<Match[]> {
-  if (matchesCache && Date.now() - matchesCache.at < MATCHES_TTL_MS) return matchesCache.data;
-  const data = (await get<Match[]>("/api/matches/all")).filter((m) => m.sources?.length > 0);
-  matchesCache = { at: Date.now(), data };
+const MATCHES_TTL_MS = 45_000;
+let rawCache: { at: number; data: RawStream[] } | undefined;
+
+async function getRaw(): Promise<RawStream[]> {
+  if (rawCache && Date.now() - rawCache.at < MATCHES_TTL_MS) return rawCache.data;
+  const res = await get<{ streams: RawStream[] }>("/api/v1/streams");
+  const data = (res.streams ?? []).filter((s) => s.stream_key && (s.sources?.length ?? 0) > 0);
+  rawCache = { at: Date.now(), data };
   return data;
+}
+
+const toMatch = (r: RawStream): Match => ({
+  id: r.stream_key,
+  title: r.name,
+  category: r.category,
+  date: r.match_timestamp ? r.match_timestamp * 1000 : Date.now(),
+  poster: r.thumbnail_url ?? null,
+  popular: (r.viewers ?? 0) > 500,
+  teams: {
+    home: r.team1 ? { name: r.team1.name, badge: r.team1.logo } : null,
+    away: r.team2 ? { name: r.team2.name, badge: r.team2.logo } : null,
+  },
+  sources: [{ source: "strmfree", id: r.stream_key }],
+});
+
+async function getAllMatches(): Promise<Match[]> {
+  return (await getRaw()).map(toMatch);
 }
 
 /** An event counts as live from 10 minutes before start until 6 hours after. */
@@ -76,9 +100,17 @@ async function getStreams(source: string, id: string): Promise<Stream[]> {
   const key = `${source}/${id}`;
   const hit = streamsCache.get(key);
   if (hit && Date.now() - hit.at < STREAMS_TTL_MS) return hit.data;
-  const data = await get<Stream[]>(
-    `/api/stream/${encodeURIComponent(source)}/${encodeURIComponent(id)}`,
-  ).catch(() => [] as Stream[]);
+  const raw = (await getRaw().catch(() => [] as RawStream[])).find((r) => r.stream_key === id);
+  const urls = raw?.live_sources?.length ? raw.live_sources : (raw?.sources ?? []);
+  const data: Stream[] = urls.map((url, i) => ({
+    id,
+    streamNo: i + 1,
+    language: "English",
+    hd: /1080|720|hd/i.test(url),
+    embedUrl: url,
+    source,
+    viewers: i === 0 ? (raw?.viewers ?? 0) : 0,
+  }));
   streamsCache.set(key, { at: Date.now(), data });
   return data;
 }
@@ -176,15 +208,14 @@ export async function runHealthCheck(): Promise<HealthReport> {
 
   let matches: Match[] = [];
   try {
-    matches = await get<Match[]>("/api/matches/all");
+    rawCache = undefined;
+    matches = await getAllMatches();
     const live = matches.filter((m) => m.sources?.length && isLive(m.date));
     checks.push({
       name: "Live events feed",
       ok: matches.length > 0,
       detail: `${matches.length} scheduled events, ${live.length} live right now`,
     });
-    // self-heal: refresh the cache with what we just verified
-    matchesCache = { at: Date.now(), data: matches.filter((m) => m.sources?.length > 0) };
     repairs.push("Refreshed the events cache.");
   } catch (e) {
     checks.push({ name: "Live events feed", ok: false, detail: String(e) });
@@ -248,8 +279,7 @@ export const getHealthReport = createServerFn({ method: "GET" }).handler(async (
   runHealthCheck(),
 );
 
-export const posterUrl = (poster?: string | null) =>
-  poster ? `${BASE}${poster.startsWith("/") ? "" : "/"}${poster}` : null;
-
-export const badgeUrl = (badge?: string) =>
-  badge ? `${BASE}/api/images/badge/${badge}.webp` : null;
+const abs = (u?: string | null) =>
+  u ? (/^https?:/.test(u) ? u : `${BASE}${u.startsWith("/") ? "" : "/"}${u}`) : null;
+export const posterUrl = (poster?: string | null) => abs(poster);
+export const badgeUrl = (badge?: string) => abs(badge);

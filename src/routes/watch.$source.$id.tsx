@@ -19,7 +19,7 @@ export const Route = createFileRoute("/watch/$source/$id")({
     return {
       meta: [
         { title: `${title} — LiveCast` },
-        { name: "description", content: `Watch ${title} live. Stream credited to Streamed.pk.` },
+        { name: "description", content: `Watch ${title} live. Stream credited to StrmFree.` },
         { property: "og:title", content: `${title} — LiveCast` },
         { property: "og:description", content: `Watch ${title} live on LiveCast.` },
         { property: "og:type", content: "video.other" },
@@ -175,12 +175,12 @@ function Watch() {
           <p className="mt-2">
             Stream, player and listing data provided by{" "}
             <a
-              href="https://streamed.pk"
+              href="https://strmfree.st"
               target="_blank"
               rel="noreferrer noopener"
               className="text-primary underline"
             >
-              Streamed.pk
+              StrmFree
             </a>
             . Video is embedded from the original host — LiveCast stores and rebroadcasts nothing.
             All broadcast rights belong to the respective leagues, networks and rights holders.
