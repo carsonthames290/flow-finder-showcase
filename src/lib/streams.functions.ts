@@ -11,8 +11,8 @@ export type Match = {
   poster?: string | null;
   popular?: boolean;
   teams?: {
-    home?: { name: string; badge?: string } | null;
-    away?: { name: string; badge?: string } | null;
+    home?: { name: string; badge?: string | undefined } | null;
+    away?: { name: string; badge?: string | undefined } | null;
   } | null;
   sources: Source[];
 };
