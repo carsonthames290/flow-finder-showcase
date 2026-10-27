@@ -171,7 +171,7 @@ function Home() {
       <section className="mx-auto max-w-6xl px-4 py-8">
         <h1 className="text-4xl sm:text-5xl">Every game. One place.</h1>
         <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-          Live streams pulled automatically from Streamed.pk and refreshed as events go on air.
+          Live streams pulled automatically from StrmFree and refreshed as events go on air.
         </p>
 
         <div className="-mx-1 mt-6 flex gap-2 overflow-x-auto pb-2">
@@ -226,12 +226,12 @@ function Home() {
           <p>
             All streams, listings, artwork and team badges are provided by and credited to{" "}
             <a
-              href="https://streamed.pk"
+              href="https://strmfree.st"
               target="_blank"
               rel="noreferrer noopener"
               className="text-primary underline"
             >
-              Streamed.pk
+              StrmFree
             </a>
             . LiveCast hosts no video and claims no ownership of any broadcast. Rights remain with
             the original broadcasters and rights holders. Takedown requests should be directed to
