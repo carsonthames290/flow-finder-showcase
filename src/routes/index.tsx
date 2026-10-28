@@ -124,7 +124,7 @@ function MatchCard({
 }
 
 function Home() {
-  const data = Route.useLoaderData();
+  const data = Route.useLoaderData() ?? { live: [], upcoming: [], error: undefined };
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/" });
   const activeSource = sourceCode(search.source);

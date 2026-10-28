@@ -1,4 +1,6 @@
-import { describe, expect, test } from "bun:test";
+import { describe, it as test } from "node:test";
+import { strict as assert } from "node:assert";
+const expect = (value: unknown) => ({ toBe: (expected: unknown) => assert.equal(value, expected), toBeUndefined: () => assert.equal(value, undefined) });
 import { SOURCE_CATALOG, searchCode, sourceCode, matchesSearch } from "./source-catalog";
 
 describe("source shortcuts", () => {

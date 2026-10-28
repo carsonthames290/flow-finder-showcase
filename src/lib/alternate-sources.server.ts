@@ -50,12 +50,19 @@ async function daddyRows(): Promise<DaddyEvent[]> {
     const category = event.closest(".schedule__category").find(".card__meta").first().text().trim() || "Sports";
     const stamp = Number.isFinite(date) ? date : Date.now();
     // Event-specific identity avoids using shared TV-channel IDs as game IDs.
-    const id = encodeURIComponent(`${title}-${stamp}`).replace(/%/g, "_");
+    const id = `${encodeURIComponent(title).replace(/[^\w.-]/g, "_").slice(0, 160)}-${stamp}`;
     const now = Date.now();
     rows.push({ match: { id, title, category, date: stamp, sources: [{ source: "daddy", id }] }, paths: [...new Set(paths)], live: category === "LIVE NOW" || (now >= stamp - 600_000 && now <= stamp + 21_600_000) });
   });
   return rows;
 }
+
+type TimEvent = { url: string; name: string; genre: number; time?: string; logo?: string; isevent?: boolean; vip?: boolean; viewers?: number; streams?: { name: string; url: string; vip?: boolean }[] };
+async function timRows() {
+  return readSource<{ events: TimEvent[]; genres?: { id: number; name: string }[] }>(`${SOURCE_CATALOG.tim.url}/api/live-upcoming`);
+}
+const timDate = (event: TimEvent) => event.time ? Date.parse(/[Zz]|[+-]\d\d:\d\d$/.test(event.time) ? event.time : `${event.time}-04:00`) : Date.now();
+const timMatch = (event: TimEvent, genres: { id: number; name: string }[]): Match => ({ id: event.url, title: event.name, category: genres.find((g) => g.id === event.genre)?.name ?? "Sports", date: timDate(event), poster: event.logo ?? null, sources: [{ source: "tim", id: event.url }] });
 
 export async function alternateSchedule(source: SourceCode): Promise<Schedule> {
   if (source === "pit") {
@@ -70,6 +77,12 @@ export async function alternateSchedule(source: SourceCode): Promise<Schedule> {
   if (source === "daddy") {
     const rows = await daddyRows();
     return { live: rows.filter((r) => r.live).map((r) => r.match), upcoming: rows.filter((r) => !r.live && r.match.date > Date.now()).sort((a, b) => a.match.date - b.match.date).map((r) => r.match) };
+  }
+  if (source === "tim") {
+    const response = await timRows();
+    const now = Date.now();
+    const rows = response.events.filter((event) => !event.vip);
+    return { live: rows.filter((event) => !event.isevent || timDate(event) <= now).map((event) => timMatch(event, response.genres ?? [])), upcoming: rows.filter((event) => event.isevent && timDate(event) > now).sort((a, b) => timDate(a) - timDate(b)).map((event) => timMatch(event, response.genres ?? [])) };
   }
   throw new Error("Source listings unavailable");
 }
@@ -100,6 +113,11 @@ export async function alternateEvent(source: SourceCode, id: string): Promise<{ 
       } catch { return null; }
     }));
     return { title: row.match.title, category: row.match.category, streams: embeds.filter((url): url is string => Boolean(url)).map((embedUrl, index) => ({ id, source, streamNo: index + 1, embedUrl, language: "Live", hd: false, viewers: 0 })) };
+  }
+  if (source === "tim") {
+    const response = await readSource<{ item: TimEvent }>(`${SOURCE_CATALOG.tim.url}/api/watch/${encodeURIComponent(id)}`);
+    const item = response.item;
+    return { title: item.name, category: "Sports", streams: item.vip ? [] : (item.streams ?? []).filter((stream) => !stream.vip && /^https:\/\//.test(stream.url)).map((stream, index) => ({ id, source, streamNo: index + 1, embedUrl: stream.url, language: stream.name, hd: false, viewers: index === 0 ? item.viewers ?? 0 : 0 })) };
   }
   throw new Error("Source player unavailable");
 }
