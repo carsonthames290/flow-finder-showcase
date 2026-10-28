@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { SOURCE_CATALOG, sourceCode, type SourceCode } from "./source-catalog";
 
 const BASE = "https://strmfree.st";
 
@@ -117,13 +118,29 @@ async function getStreams(source: string, id: string): Promise<Stream[]> {
 
 const safeRef = /^[\w.-]+$/;
 function validateRef(input: { source: string; id: string }) {
-  if (!safeRef.test(input.source) || !safeRef.test(input.id)) {
+  if (!Object.hasOwn(SOURCE_CATALOG, input.source) || !safeRef.test(input.id) || input.id.length > 200) {
     throw new Error("Invalid stream reference");
   }
   return input;
 }
 
 export type Schedule = { live: Match[]; upcoming: Match[] };
+
+export const listSourceSchedule = createServerFn({ method: "GET" })
+  .inputValidator((input: { source: SourceCode }) => ({ source: sourceCode(input.source) }))
+  .handler(async ({ data }): Promise<Schedule & { error?: string }> => {
+    try {
+      if (data.source !== "strmfree") {
+        const { alternateSchedule } = await import("./alternate-sources.server");
+        return await alternateSchedule(data.source);
+      }
+      const now = Date.now();
+      const all = await getAllMatches();
+      return { live: all.filter((m) => isLive(m.date, now)).sort((a, b) => a.date - b.date), upcoming: all.filter((m) => m.date - LIVE_LEAD_MS > now).sort((a, b) => a.date - b.date).slice(0, 48) };
+    } catch {
+      return { live: [], upcoming: [], error: `${SOURCE_CATALOG[data.source].name} listings are unavailable right now. No other source has been substituted.` };
+    }
+  });
 
 export const listSchedule = createServerFn({ method: "GET" }).handler(
   async (): Promise<Schedule> => {
@@ -160,6 +177,10 @@ export const listStreams = createServerFn({ method: "GET" })
 export const listAllStreamsForEvent = createServerFn({ method: "GET" })
   .inputValidator(validateRef)
   .handler(async ({ data }) => {
+    if (data.source !== "strmfree") {
+      const { alternateEvent } = await import("./alternate-sources.server");
+      return alternateEvent(sourceCode(data.source), data.id).catch(() => ({ title: null, category: null, streams: [] as Stream[] }));
+    }
     const [primary, matches] = await Promise.all([
       getStreams(data.source, data.id),
       getAllMatches().catch(() => [] as Match[]),

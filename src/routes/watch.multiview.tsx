@@ -3,6 +3,7 @@ import { memo, useEffect, useState } from "react";
 import { StreamEmbed } from "@/components/stream-embed";
 import { Button } from "@/components/ui/button";
 import { listAllStreamsForEvent } from "@/lib/streams.functions";
+import { sourceCode } from "@/lib/source-catalog";
 
 type MultiviewSearch = { streams?: string | undefined };
 
@@ -110,6 +111,8 @@ const MultiviewTile = memo(function MultiviewTile({
 
 function Multiview() {
   const { events } = Route.useLoaderData();
+  const { streams: refs } = Route.useSearch();
+  const homeSource = sourceCode(parseRefs(refs)[0]?.source);
   const [audioIndex, setAudioIndex] = useState(0);
 
   return (
@@ -120,7 +123,7 @@ function Multiview() {
             LiveCast
           </Link>
           <Button asChild variant="outline" size="sm">
-            <Link to="/">← Choose streams</Link>
+            <Link to="/" search={{ source: homeSource }}>← Choose streams</Link>
           </Button>
         </div>
       </header>
