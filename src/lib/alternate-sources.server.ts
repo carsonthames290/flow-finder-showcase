@@ -44,11 +44,11 @@ async function daddyRows(): Promise<DaddyEvent[]> {
     }).filter(Boolean);
     if (!title || !paths.length) return;
     const dayLabel = event.closest(".schedule__day").find(".schedule__dayTitle").first().text();
-    const day = dayLabel.match(/\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]+\s+\d{4}/)?.[0].replace(/(\d)(st|nd|rd|th)/, "$1");
+    const day = dayLabel.match(/\d{1,2}(?:st|nd|rd|th|h)?\s+[A-Za-z]+\s+\d{4}/)?.[0].replace(/(\d)(st|nd|rd|th|h)/, "$1");
     const time = event.find(".schedule__time").attr("data-time") ?? "00:00";
-    const date = day ? Date.parse(`${day} ${time}:00 GMT`) : Date.now();
+    const date = day ? Date.parse(`${day} ${time}:00 GMT`) : 0;
     const category = event.closest(".schedule__category").find(".card__meta").first().text().trim() || "Sports";
-    const stamp = Number.isFinite(date) ? date : Date.now();
+    const stamp = Number.isFinite(date) ? date : 0;
     // Event-specific identity avoids using shared TV-channel IDs as game IDs.
     const id = `${encodeURIComponent(title).replace(/[^\w.-]/g, "_").slice(0, 160)}-${stamp}`;
     const now = Date.now();
@@ -61,7 +61,15 @@ type TimEvent = { url: string; name: string; genre: number; time?: string; logo?
 async function timRows() {
   return readSource<{ events: TimEvent[]; genres?: { id: number; name: string }[] }>(`${SOURCE_CATALOG.tim.url}/api/live-upcoming`);
 }
-const timDate = (event: TimEvent) => event.time ? Date.parse(/[Zz]|[+-]\d\d:\d\d$/.test(event.time) ? event.time : `${event.time}-04:00`) : Date.now();
+const timDate = (event: TimEvent) => {
+  if (!event.time) return Date.now();
+  if (/[Zz]|[+-]\d\d:\d\d$/.test(event.time)) return Date.parse(event.time);
+  const utc = Date.parse(`${event.time}Z`);
+  if (!Number.isFinite(utc)) return 0;
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", timeZoneName: "longOffset" }).formatToParts(new Date(utc));
+  const offset = parts.find((part) => part.type === "timeZoneName")?.value.replace("GMT", "") || "-05:00";
+  return Date.parse(event.time + offset);
+};
 const timMatch = (event: TimEvent, genres: { id: number; name: string }[]): Match => ({ id: event.url, title: event.name, category: genres.find((g) => g.id === event.genre)?.name ?? "Sports", date: timDate(event), poster: event.logo ?? null, sources: [{ source: "tim", id: event.url }] });
 
 export async function alternateSchedule(source: SourceCode): Promise<Schedule> {
