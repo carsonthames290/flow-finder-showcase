@@ -11,3 +11,4 @@
 
 - Keep source names and public shortcut mappings in the shared source catalog so search, navigation, and credits agree.
 - Fetch alternate providers through server-only adapters with allowlisted source IDs; never mix another provider's events into a source-specific homepage or accept arbitrary upstream URLs.
+- Parse external listing HTML with cheerio/slim and return plain event data, never render upstream HTML or scripts in LiveCast.
