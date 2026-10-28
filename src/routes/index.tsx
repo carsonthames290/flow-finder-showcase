@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState, type FormEvent } from "react";
 import { Check, MonitorUp, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { listSourceSchedule, posterUrl, badgeUrl, type Match } from "@/lib/streams.functions";
+import { listSourceSchedule, posterUrl, badgeUrl, type Match, type Schedule } from "@/lib/streams.functions";
 import { ALTERNATE_CODES, SOURCE_CATALOG, sourceCode, searchCode, matchesSearch, type SourceCode } from "@/lib/source-catalog";
 
 export const Route = createFileRoute("/")({
@@ -124,7 +124,7 @@ function MatchCard({
 }
 
 function Home() {
-  const data = Route.useLoaderData() ?? { live: [], upcoming: [], error: undefined };
+  const data: Schedule & { error?: string | undefined } = Route.useLoaderData() ?? { live: [], upcoming: [] };
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/" });
   const activeSource = sourceCode(search.source);
