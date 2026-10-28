@@ -4,4 +4,4 @@
 - [x] Preserve single-stream and multiview player integration across sources.
 - [x] Test search, source isolation, navigation, and playback-link loading.
 - [ ] Verify TimStreams live loading when timst.top DNS becomes reliably available; its adapter passed fixture tests, but the final live request could not resolve the provider.
-- [ ] Confirm actual video playback from external players; player links render, but provider playback was not verified.
+- [ ] Confirm actual video playback from external players; the sampled Daddy player reported a video failure, PitSport remained loading, and TimStreams DNS was unavailable. These are external-provider blockers.
