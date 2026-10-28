@@ -17,7 +17,7 @@ type PitProgram = { programId: number; titleText: string; subtitle?: string; ses
 const pitMatch = (program: PitProgram): Match => ({
   id: String(program.programId), title: program.titleText + (program.subtitle ? ` · ${program.subtitle}` : ""),
   category: program.footer ?? program.competitionSlug ?? "Sports", date: (program.sessionStart ?? 0) * 1000,
-  poster: program.background?.replace(/^http:/, "https:"), sources: [{ source: "pit", id: String(program.programId) }],
+  poster: program.background?.replace(/^http:/, "https:") ?? null, sources: [{ source: "pit", id: String(program.programId) }],
 });
 
 export async function alternateSchedule(source: SourceCode): Promise<Schedule> {

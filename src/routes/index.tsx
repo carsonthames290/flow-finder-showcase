@@ -6,7 +6,7 @@ import { listSourceSchedule, posterUrl, badgeUrl, type Match } from "@/lib/strea
 import { ALTERNATE_CODES, SOURCE_CATALOG, sourceCode, searchCode, matchesSearch, type SourceCode } from "@/lib/source-catalog";
 
 export const Route = createFileRoute("/")({
-  validateSearch: (search: Record<string, unknown>): { source?: SourceCode; q?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { source?: SourceCode | undefined; q?: string | undefined } => ({
     source: search["source"] ? sourceCode(search["source"]) : undefined,
     q: typeof search["q"] === "string" ? search["q"].slice(0, 200) : undefined,
   }),
@@ -131,9 +131,8 @@ function Home() {
   const provider = SOURCE_CATALOG[activeSource];
   const [query, setQuery] = useState(search.q ?? "");
   const [switching, setSwitching] = useState(false);
-  // Tolerate an older cached payload (a plain array) from a previous session.
-  const live = Array.isArray(data) ? (data as Match[]) : (data?.live ?? []);
-  const upcoming = Array.isArray(data) ? [] : (data?.upcoming ?? []);
+  const live = data.live;
+  const upcoming = data.upcoming;
   const [category, setCategory] = useState<string>("all");
   const [selected, setSelected] = useState<string[]>([]);
 
