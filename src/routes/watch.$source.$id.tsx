@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { StreamEmbed } from "@/components/stream-embed";
 import { Button } from "@/components/ui/button";
 import { listAllStreamsForEvent } from "@/lib/streams.functions";
+import { SOURCE_CATALOG, sourceCode } from "@/lib/source-catalog";
 
 type WatchSearch = { title?: string | undefined };
 
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/watch/$source/$id")({
     return {
       meta: [
         { title: `${title} — LiveCast` },
-        { name: "description", content: `Watch ${title} live. Stream credited to StrmFree.` },
+        { name: "description", content: `Watch ${title} live on LiveCast.` },
         { property: "og:title", content: `${title} — LiveCast` },
         { property: "og:description", content: `Watch ${title} live on LiveCast.` },
         { property: "og:type", content: "video.other" },
@@ -31,6 +32,9 @@ export const Route = createFileRoute("/watch/$source/$id")({
 });
 
 function Watch() {
+  const { source } = Route.useParams();
+  const homeSource = sourceCode(source);
+  const provider = SOURCE_CATALOG[homeSource];
   const { streams, title: serverTitle } = Route.useLoaderData();
   const { title: searchTitle } = Route.useSearch();
   // The server-resolved title always wins: it comes from the same event the
@@ -89,11 +93,12 @@ function Watch() {
     <div className="min-h-screen">
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <Link to="/" className="font-display text-3xl tracking-wider text-primary">
+          <Link to="/" search={{ source: homeSource }} className="font-display text-3xl tracking-wider text-primary">
             LiveCast
           </Link>
           <Link
             to="/"
+            search={{ source: homeSource }}
             className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition hover:border-primary hover:text-foreground"
           >
             ← Back to home
@@ -175,12 +180,12 @@ function Watch() {
           <p className="mt-2">
             Stream, player and listing data provided by{" "}
             <a
-              href="https://strmfree.st"
+              href={provider.url}
               target="_blank"
               rel="noreferrer noopener"
               className="text-primary underline"
             >
-              StrmFree
+              {provider.name}
             </a>
             . Video is embedded from the original host — LiveCast stores and rebroadcasts nothing.
             All broadcast rights belong to the respective leagues, networks and rights holders.
