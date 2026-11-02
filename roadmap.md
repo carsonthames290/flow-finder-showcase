@@ -1,4 +1,5 @@
 # Tasks
+- [ ] Repair StrmFree player links after its upstream format change and verify single-stream/multiview loading.
 - [x] Investigate the four source listings and playback links.
 - [x] Add game search and public source-code shortcuts with source-specific homepages.
 - [x] Preserve single-stream and multiview player integration across sources.
