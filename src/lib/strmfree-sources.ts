@@ -6,13 +6,13 @@ export function normalizeStrmFreeSources(value: unknown): { url: string; hd: boo
   const seen = new Set<string>();
   return value.flatMap((source: unknown) => {
     const record = typeof source === "object" && source !== null ? source as Record<string, unknown> : undefined;
-    const url = typeof source === "string" ? source : record?.url;
+    const url = typeof source === "string" ? source : record?.["url"];
     if (typeof url !== "string") return [];
     try {
       const parsed = new URL(url);
       if (parsed.protocol !== "https:" || parsed.username || parsed.password || seen.has(parsed.href)) return [];
       seen.add(parsed.href);
-      return [{ url: parsed.href, hd: /1080|720|(?:f?hd)/i.test(`${url} ${typeof record?.quality === "string" ? record.quality : ""}`) }];
+      return [{ url: parsed.href, hd: /1080|720|(?:f?hd)/i.test(`${url} ${typeof record?.["quality"] === "string" ? record["quality"] : ""}`) }];
     } catch { return []; }
   });
 }
