@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { SOURCE_CATALOG, sourceCode, type SourceCode } from "./source-catalog";
+import { strmFreeEventSources, type RawSource } from "./strmfree-sources";
 
 const BASE = "https://strmfree.st";
 
@@ -47,8 +48,8 @@ type RawStream = {
   match_timestamp?: number | null;
   viewers?: number;
   thumbnail_url?: string | null;
-  sources?: string[];
-  live_sources?: string[];
+  sources?: RawSource[];
+  live_sources?: RawSource[];
   team1?: { name: string; logo?: string } | null;
   team2?: { name: string; logo?: string } | null;
 };
@@ -59,7 +60,7 @@ let rawCache: { at: number; data: RawStream[] } | undefined;
 async function getRaw(): Promise<RawStream[]> {
   if (rawCache && Date.now() - rawCache.at < MATCHES_TTL_MS) return rawCache.data;
   const res = await get<{ streams: RawStream[] }>("/api/v1/streams");
-  const data = (res.streams ?? []).filter((s) => s.stream_key && (s.sources?.length ?? 0) > 0);
+  const data = (res.streams ?? []).filter((s) => s.stream_key && strmFreeEventSources(s).length > 0);
   rawCache = { at: Date.now(), data };
   return data;
 }
@@ -102,13 +103,13 @@ async function getStreams(source: string, id: string): Promise<Stream[]> {
   const hit = streamsCache.get(key);
   if (hit && Date.now() - hit.at < STREAMS_TTL_MS) return hit.data;
   const raw = (await getRaw().catch(() => [] as RawStream[])).find((r) => r.stream_key === id);
-  const urls = raw?.live_sources?.length ? raw.live_sources : (raw?.sources ?? []);
-  const data: Stream[] = urls.map((url, i) => ({
+  const urls = raw ? strmFreeEventSources(raw) : [];
+  const data: Stream[] = urls.map((link, i) => ({
     id,
     streamNo: i + 1,
     language: "English",
-    hd: /1080|720|hd/i.test(url),
-    embedUrl: url,
+    hd: link.hd,
+    embedUrl: link.url,
     source,
     viewers: i === 0 ? (raw?.viewers ?? 0) : 0,
   }));
@@ -255,7 +256,7 @@ export async function runHealthCheck(): Promise<HealthReport> {
     checks.push({
       name: "Stream links",
       ok: playable > 0,
-      detail: `${playable}/${sample.length} sampled events had playable streams`,
+      detail: `${playable}/${sample.length} sampled events returned valid HTTPS player links; video playback is not checked`,
     });
   }
 
